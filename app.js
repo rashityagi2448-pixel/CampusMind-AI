@@ -7,6 +7,30 @@
   const DAY = 86400000;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  let clickAudioContext;
+  function playButtonSound() {
+    const AudioContext = window.AudioContext;
+    if (!AudioContext) return;
+    clickAudioContext = clickAudioContext || new AudioContext();
+    const playTone = () => {
+      const oscillator = clickAudioContext.createOscillator();
+      const gain = clickAudioContext.createGain();
+      const now = clickAudioContext.currentTime;
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(660, now);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      oscillator.connect(gain);
+      gain.connect(clickAudioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.04);
+    };
+    if (clickAudioContext.state === 'suspended') {
+      clickAudioContext.resume().then(playTone).catch(error => console.error('Could not play button sound:', error));
+      return;
+    }
+    playTone();
+  }
   const localDay = (date = new Date()) => {
     const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
     return d.toISOString().slice(0, 10);
@@ -227,6 +251,9 @@
   const hour = new Date().getHours();
   $('#greeting').innerHTML = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, ${esc(FIRST_NAME)} <span class="wave">✦</span>`;
 
+  document.addEventListener('click', event => {
+    if (event.target instanceof Element && event.target.closest('button')) playButtonSound();
+  }, true);
   $$('.nav-link').forEach(link => link.addEventListener('click', event => { event.preventDefault(); goTo(link.dataset.view); }));
   $$('[data-go]').forEach(button => button.addEventListener('click', () => goTo(button.dataset.go)));
   $$('[data-open]').forEach(button => button.addEventListener('click', () => showModal(button.dataset.open)));
